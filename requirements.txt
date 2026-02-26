@@ -1,0 +1,10 @@
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.1
+pydantic>=2.6.1
+chromadb>=0.4.24
+sentence-transformers>=2.5.1
+python-multipart
+requests
+numpy<2.0.0
+google-generativeai
+Pillow
