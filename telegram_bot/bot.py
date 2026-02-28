@@ -22,95 +22,100 @@ logging.basicConfig(
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "Привет! Я AI-ассистент завода Balex.\n\n"
-        "📸 **Пришли мне фото** — я оцифрую документ в CRM.\n"
-        "🎤 **Запиши голосовое** — я отвечу по базе знаний (Технолог)."
+        "👋 Вітаю! Я AI-асистент брендів **Optima** та **Golden Mile**.\n\n"
+        "✍️ **Напишіть текстом** або 🎤 **запишіть голосове** — я допоможу підібрати інгредієнти, суміші та начинки з наших каталогів.\n"
+        "📸 **Надішліть фото бланку** — я оцифрую його та створю лід в CRM."
     )
+
+# --- ОБРАБОТКА ТЕКСТА (БАЗА ЗНАНИЙ) ---
+async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    status_msg = await update.message.reply_text("🔍 Шукаю інформацію в каталогах...")
+    user_question = update.message.text.strip()
+    
+    try:
+        payload = {"question": user_question}
+        rag_response = requests.post(f"{API_URL}/agent/technologist/ask", json=payload)
+        
+        if rag_response.status_code == 200:
+            rag_data = rag_response.json()
+            answer_text = rag_data.get('answer', 'Помилка отримання відповіді')
+            
+            await status_msg.edit_text(f"🤖 **AI Менеджер:**\n\n{answer_text}")
+        else:
+            await status_msg.edit_text(f"❌ Помилка API сервера: {rag_response.status_code}")
+
+    except Exception as e:
+        await status_msg.edit_text(f"❌ Помилка з'єднання: {e}")
 
 # --- ОБРАБОТКА ФОТО (ДОКУМЕНТЫ) ---
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    status_msg = await update.message.reply_text("🧐 Смотрю документ...")
+    status_msg = await update.message.reply_text("🧐 Аналізую документ...")
     
     try:
-        # 1. Скачиваем фото из Telegram
         photo_file = await update.message.photo[-1].get_file()
         photo_bytes = await photo_file.download_as_bytearray()
-        
         
         files = {'file': ('doc.jpg', photo_bytes, 'image/jpeg')}
         response = requests.post(f"{API_URL}/agent/doc/digitize", files=files)
         
         if response.status_code != 200:
-            await status_msg.edit_text(f"❌ Ошибка сервера: {response.text}")
+            await status_msg.edit_text(f"❌ Помилка сервера: {response.text}")
             return
 
         data = response.json()
         
-        # 3. Ответ пользователю
         if data.get("is_valid"):
-            reply = f"✅ **УСПЕХ!**\n\n" \
+            reply = f"✅ **УСПІХ!**\n\n" \
                     f"📄 Тип: {data['doc_type']}\n" \
-                    f"🔢 Данные: {data['fields']}\n" \
-                    f"📎 **Создан Лид в CRM ID:** {data['odoo_id']}"
+                    f"🔢 Дані: {data['fields']}\n" \
+                    f"📎 **Створено Лід в CRM ID:** {data['odoo_id']}"
             await status_msg.edit_text(reply)
         else:
-            reply = f"⛔ **ОТКАЗ**\n\n" \
+            reply = f"⛔ **ВІДМОВА**\n\n" \
                     f"Причина: {data.get('rejection_reason')}\n" \
-                    f"(Я не отправил это в Odoo)"
+                    f"(Дані не відправлені в Odoo)"
             await status_msg.edit_text(reply)
 
     except Exception as e:
-        await status_msg.edit_text(f"❌ Ошибка бота: {e}")
+        await status_msg.edit_text(f"❌ Помилка бота: {e}")
 
 # --- ОБРАБОТКА ГОЛОСА (ТЕХНОЛОГ) ---
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    status_msg = await update.message.reply_text("👂 Слушаю...")
-    
+    status_msg = await update.message.reply_text("👂 Слухаю...")
     file_path = "temp_voice.ogg" 
     
     try:
-        # 1. Скачиваем голосовое сообщение
         voice_file = await update.message.voice.get_file()
         voice_bytes = await voice_file.download_as_bytearray()
-        
         
         with open(file_path, "wb") as f:
             f.write(voice_bytes)
             
-        
         uploaded_file = genai.upload_file(path=file_path, mime_type="audio/ogg")
-        
         
         model = genai.GenerativeModel('gemini-2.5-flash')
         transcribe_resp = model.generate_content(
-            [uploaded_file, "Напиши только текст того, что сказано в аудио. На русском языке."]
+            [uploaded_file, "Напиши только текст того, что сказано в аудио. На украинском или русском языке."]
         )
         
         user_question = transcribe_resp.text.strip()
-        await status_msg.edit_text(f"🗣 **Вы спросили:** {user_question}\n🔍 Ищу ответ...")
-        
-        
+        await status_msg.edit_text(f"🗣 **Ваш запит:** {user_question}\n🔍 Шукаю в каталогах...")
         
         payload = {"question": user_question}
         rag_response = requests.post(f"{API_URL}/agent/technologist/ask", json=payload)
         
         if rag_response.status_code == 200:
             rag_data = rag_response.json()
-            answer_text = rag_data.get('answer', 'Ошибка получения ответа')
+            answer_text = rag_data.get('answer', 'Помилка отримання відповіді')
             
-            # Отправляем ответ пользователю
-            await context.bot.send_message(
-                chat_id=update.effective_chat.id,
-                text=f"👨‍🔧 **Технолог:**\n{answer_text}"
-            )
+            await status_msg.edit_text(f"🤖 **AI Менеджер:**\n\n{answer_text}")
         else:
-            await status_msg.edit_text(f"❌ Ошибка API Технолога: {rag_response.status_code}")
+            await status_msg.edit_text(f"❌ Помилка API сервера: {rag_response.status_code}")
 
     except Exception as e:
-        await status_msg.edit_text(f"❌ Ошибка: {e}")
+        await status_msg.edit_text(f"❌ Помилка: {e}")
         
     finally:
-        
         if os.path.exists(file_path):
             os.remove(file_path)
 
@@ -118,6 +123,8 @@ if __name__ == '__main__':
     application = ApplicationBuilder().token(BOT_TOKEN).build()
     
     application.add_handler(CommandHandler('start', start))
+    # Добавили обработчик ТЕКСТА (игнорируем команды)
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     application.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     application.add_handler(MessageHandler(filters.VOICE, handle_voice))
     
