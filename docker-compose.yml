@@ -1,9 +1,25 @@
-version: '3.8'
-
 services:
+  # 🧠 Векторная база данных
+  vectordb:
+    image: chromadb/chroma:latest
+    container_name: balex_vector_db
+    restart: unless-stopped
+    ports:
+      - "8001:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
+    environment:
+      - CHROMA_SERVER_HOST=0.0.0.0
+      - IS_PERSISTENT=TRUE
+    networks:
+      - balex_network
+    # УБРАЛИ healthcheck, так как в образе Chroma нет утилиты curl
+
+  # ⚙️ Core API
   api:
     build: ./core_api
     container_name: balex_core_api
+    restart: unless-stopped
     ports:
       - "8000:8000"
     volumes:
@@ -11,37 +27,41 @@ services:
       - ./data:/app/data
       - ./chroma_db:/app/chroma_db
     environment:
-      
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - ODOO_URL=${ODOO_URL}
       - ODOO_DB=${ODOO_DB}
       - ODOO_USER=${ODOO_USER}
       - ODOO_PASSWORD=${ODOO_PASSWORD}
       - CHROMA_DB_URL=http://vectordb:8000
+    networks:
+      - balex_network
     depends_on:
-      - vectordb
-    restart: always
+      - vectordb  # ИСПРАВЛЕНО: просто ждем старта базы
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 120s  # <--- ДАЄМО СЕРВЕРУ 2 ХВИЛИНИ НА ЧИТАННЯ PDF
 
-  vectordb:
-    image: chromadb/chroma:latest
-    container_name: balex_vector_db
-    ports:
-      - "8001:8000"
-    volumes:
-      - chroma_data:/chroma/chroma
-    restart: always
-
+  # 🤖 Telegram Bot
   telegram_bot:
     build: ./telegram_bot
     container_name: balex_telegram_bot
+    restart: unless-stopped
     environment:
-      
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - CORE_API_URL=http://api:8000
+      - API_URL=http://api:8000
+    networks:
+      - balex_network
     depends_on:
-      - api
-    restart: always
+      api:
+        condition: service_healthy
+
+networks:
+  balex_network:
+    driver: bridge
 
 volumes:
   chroma_data:

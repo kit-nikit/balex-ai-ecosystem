@@ -1,13 +1,21 @@
+# Секретні ключі (КРИТИЧНО ВАЖЛИВО!)
 .env
 
-
+# База даних ChromaDB
 chroma_db/
-.chroma/
+chroma_data/
 
+# Логи Docker та додатків
+logs/
+*.log
 
+# Системні файли Python
 __pycache__/
 *.pyc
-
-
+.pytest_cache/
 venv/
 env/
+
+# Системні файли macOS/Windows
+.DS_Store
+Thumbs.db

@@ -1,0 +1,28 @@
+.
+├── chroma_db
+├── core_api
+│   ├── Dockerfile
+│   └── main.py
+├── data
+│   ├── ChocoCraft.pdf
+│   ├── balex_knowledge.txt
+│   ├── Каталог суміші.pdf
+│   ├── Макова начинка_листовка2_web 1.pdf
+│   ├── Мед штучний.pdf
+│   ├── Наповнювачі.pdf
+│   ├── Наповнювачі_гетерогенні.pdf
+│   ├── Наповнювачі_гомогенні.pdf
+│   ├── Наповнювачі_кондитерські.pdf
+│   ├── Наповнювачі_макові.pdf
+│   ├── Наповнювачі_молочні.pdf
+│   ├── Наповнювачі_сироп.pdf
+│   └── Наповнювачі_фруктові.pdf
+├── docker-compose.yml
+├── requirements.txt
+├── structure.txt
+├── telegram_bot
+│   ├── Dockerfile
+│   └── bot.py
+└── test_odoo_bridge.py
+
+5 directories, 21 files

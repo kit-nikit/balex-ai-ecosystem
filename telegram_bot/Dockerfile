@@ -1,8 +1,9 @@
-FROM python:3.9-slim
+FROM python:3.11-slim
 
 WORKDIR /app
 
-RUN pip install python-telegram-bot requests google-generativeai
+
+RUN pip install --no-cache-dir aiogram aiohttp google-generativeai
 
 COPY bot.py .
 
